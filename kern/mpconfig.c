@@ -215,7 +215,7 @@ mp_init(void)
 	}
 	cprintf("SMP: CPU %d found %d CPU(s)\n", bootcpu->cpu_id,  ncpu);
 
-	if (mp->imcrp) {
+	if (mp->imcrp) {//Interrupt Mode Configuration Register
 		// [MP 3.2.6.1] If the hardware implements PIC mode,
 		// switch to getting interrupts from the LAPIC.
 		cprintf("SMP: Setting IMCR to switch from PIC mode to symmetric I/O mode\n");

@@ -360,7 +360,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	ph = (struct Proghdr *) ((uint8_t *) elf + elf->e_phoff);
 	eph = ph + elf->e_phnum;
 	for (; ph < eph; ph++){ 
-		cprintf("segment: filesz %x memsz %x va %x pa %x offset %x flags %x\n",ph->p_filesz, ph->p_memsz, ph->p_va, ph->p_pa, ph->p_offset, ph->p_flags);
+		//cprintf("segment: filesz %x memsz %x va %x pa %x offset %x flags %x\n",ph->p_filesz, ph->p_memsz, ph->p_va, ph->p_pa, ph->p_offset, ph->p_flags);
 		if(ph->p_type != ELF_PROG_LOAD) continue;
 		assert(ph->p_memsz >= ph->p_filesz);
 		region_alloc(e, (void*)ph->p_va, ph->p_memsz);
@@ -369,7 +369,7 @@ load_icode(struct Env *e, uint8_t *binary)
 		memcpy((void*)ph->p_va, (void*)elf + ph->p_offset, ph->p_filesz);
 		lcr3(PADDR(kern_pgdir));
 	}
-	cprintf("finish load segment\n");
+	//cprintf("finish load segment\n");
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
@@ -533,6 +533,7 @@ env_run(struct Env *e)
 	curenv->env_runs++;
 	lcr3(PADDR(curenv->env_pgdir));
 	cprintf("start env_pop and running...\n");
+	unlock_kernel();
 	env_pop_tf(&curenv->env_tf);
 
 	panic("env_run not yet implemented");
