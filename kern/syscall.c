@@ -12,6 +12,10 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 
+// 使 sys_page_map 调用 envid2env 时暂时不检查 perm
+// 注：使用该值时，将其作为参数，但不要实际改变pte的值
+#define PTE_NOT_CHECK 0x200
+
 // Print a string to the system console.
 // The string is exactly 'len' characters long.
 // Destroys the environment on memory errors.
@@ -220,9 +224,14 @@ sys_page_map(envid_t srcenvid, void *srcva,
 			(perm & (~PTE_SYSCALL)) )
 		return -E_INVAL;
 	struct Env *src_environemt, *dst_environment;
-	if(envid2env(srcenvid, &src_environemt, 1) < 0 ||
-			envid2env(dstenvid, &dst_environment, 1) < 0)
+	bool chekperm = !(perm & PTE_NOT_CHECK);
+
+	if(envid2env(srcenvid, &src_environemt, chekperm) < 0 ||
+			envid2env(dstenvid, &dst_environment, chekperm) < 0)
 		return -E_BAD_ENV;
+
+	perm &= ~PTE_NOT_CHECK; // 取消 PTE_NOT_CHECK
+
 	pte_t *pte;
 	struct PageInfo *page = page_lookup(src_environemt->env_pgdir, srcva, &pte);
 	// if(srcenvid == 4097)
@@ -298,8 +307,28 @@ sys_page_unmap(envid_t envid, void *va)
 static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
+
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	struct Env* env;
+	int r;
+	if ((r = envid2env(envid, &env, 0)) != 0)
+		return r;
+	if (env->env_ipc_recving == 0) // 如果接受方没准备好接收数据
+		return -E_IPC_NOT_RECV;
+	// 如果接收方准备好接收了，那就传递数据
+	env->env_status = ENV_RUNNABLE;
+	env->env_ipc_recving = 0;
+	env->env_ipc_from = curenv->env_id;
+	env->env_ipc_value = value;
+	env->env_ipc_perm = 0;
+	env->env_tf.tf_regs.reg_eax = 0;
+	// 映射页面
+	if (srcva != NULL && (uintptr_t)srcva < UTOP && env->env_ipc_dstva != NULL) {
+		r = sys_page_map(0, srcva, envid, env->env_ipc_dstva, perm | PTE_NOT_CHECK);
+		env->env_ipc_perm = perm;
+	}
+
+	return r;
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -317,7 +346,14 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if ((uint32_t)dstva < UTOP && PGOFF(dstva) != 0) {
+		return -E_INVAL;
+	}
+	curenv->env_ipc_recving = 1;
+	curenv->env_ipc_dstva = dstva;
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	sys_yield(); // 注：yield后，要通过tf的eax改返回值
+
 	return 0;
 }
 
@@ -356,6 +392,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_page_unmap(a1, (void *) a2);
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall(a1, (void *) a2);
+		case SYS_ipc_try_send:
+			return sys_ipc_try_send(a1, a2, (void *)a3, a4);
+		case SYS_ipc_recv:
+			return sys_ipc_recv((void *)a1);
 	default:
 		return -E_INVAL;
 	}
