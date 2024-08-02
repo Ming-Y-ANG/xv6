@@ -404,7 +404,7 @@ page_fault_handler(struct Trapframe *tf)
 		utf->utf_regs = tf->tf_regs;
 		tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
 		tf->tf_esp = (uintptr_t)utf;
-		print_trapframe(tf);
+		//print_trapframe(tf);
 		env_run(curenv);
 	}
 
