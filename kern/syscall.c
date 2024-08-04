@@ -143,7 +143,7 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	if ((r = envid2env(envid, &e, 1)) < 0) {
 		return r;
 	}
-	tf->tf_eflags = FL_IF;
+	tf->tf_eflags |= FL_IF;
 	tf->tf_eflags &= ~FL_IOPL_MASK;			//普通进程不能有IO权限
 	tf->tf_cs = GD_UT | 3;
 	e->env_tf = *tf;

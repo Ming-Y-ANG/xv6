@@ -38,7 +38,7 @@ sched_yield(void)
 				env_run(envs + counter);
 			}
 		}
-		if(curenv->env_status != ENV_NOT_RUNNABLE)
+		if(curenv->env_status == ENV_RUNNING)
 			env_run(curenv);
 		//cprintf("%d\n", counter);
 	} else {
