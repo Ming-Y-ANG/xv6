@@ -1,6 +1,7 @@
 #include <kern/e1000.h>
 #include <inc/stdio.h>
 #include <kern/pmap.h>
+#include <inc/string.h>
 
 // LAB 6: Your driver code here
 volatile void *bar_va;
@@ -9,9 +10,13 @@ struct e1000_tdt *tdt;
 struct e1000_tx_desc tx_desc_array[TXDESCS];
 char tx_buffer_array[TXDESCS][TX_PKT_SIZE];
 
+int e1000_transmit(void *data, size_t len);
+
 int 
 e1000_attachfn(struct pci_func *pcif)
 {
+	char *data = "transmit test";
+
 	pci_func_enable(pcif);
 	cprintf("reg_base:%x, reg_size:%x\n", pcif->reg_base[0], pcif->reg_size[0]);
 
@@ -21,6 +26,9 @@ e1000_attachfn(struct pci_func *pcif)
 	assert(*status_reg == 0x80080783);
 
 	e1000_transmit_init();
+
+	e1000_transmit(data, strlen(data));
+
 	return 0;
 }
 
@@ -67,3 +75,21 @@ e1000_transmit_init(void)
 	tipg->ipgr1 = 4;
 	tipg->ipgr2 = 6;
 }
+
+int
+e1000_transmit(void *data, size_t len)
+{
+	uint32_t current = tdt->tdt;
+	if(!(tx_desc_array[current].status & E1000_TXD_STAT_DD)) {
+		return -E_TRANSMIT_RETRY;
+	}
+	tx_desc_array[current].length = len;
+	tx_desc_array[current].status &= ~E1000_TXD_STAT_DD;
+	tx_desc_array[current].cmd |= (E1000_TXD_CMD_EOP | E1000_TXD_CMD_RS);
+	memcpy(tx_buffer_array[current], data, len);
+	uint32_t next = (current + 1) % TXDESCS;
+	tdt->tdt = next;
+
+	return 0;
+}
+
