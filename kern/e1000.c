@@ -10,12 +10,11 @@ struct e1000_tdt *tdt;
 struct e1000_tx_desc tx_desc_array[TXDESCS];
 char tx_buffer_array[TXDESCS][TX_PKT_SIZE];
 
-int e1000_transmit(void *data, size_t len);
 
 int 
 e1000_attachfn(struct pci_func *pcif)
 {
-	char *data = "transmit test";
+	//char *data = "transmit test";
 
 	pci_func_enable(pcif);
 	cprintf("reg_base:%x, reg_size:%x\n", pcif->reg_base[0], pcif->reg_size[0]);
@@ -27,7 +26,7 @@ e1000_attachfn(struct pci_func *pcif)
 
 	e1000_transmit_init();
 
-	e1000_transmit(data, strlen(data));
+	//e1000_transmit(data, strlen(data));
 
 	return 0;
 }
